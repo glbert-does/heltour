@@ -116,7 +116,7 @@ def pairing_forfeit_changed(instance, **kwargs):
     league = round_.season.league
     white = instance.white.lichess_username.lower() if instance.white is not None else '?'
     black = instance.black.lichess_username.lower() if instance.black is not None else '?'
-    message = '@%s vs @%s %s' % (white, black, instance.result or '*')
+    message = f'<@{white}> vs <@{black}> {instance.result or "*"}'
     if league.get_leaguesetting().notify_for_forfeits:
         _send_notification('mod', league, message)
 
@@ -162,7 +162,7 @@ def notify_mods_unscheduled(round_, **kwargs):
         message = '%s - All games are scheduled.' % round_
     else:
         pairing_strs = (
-            '@%s vs @%s' % (p.white.lichess_username.lower(), p.black.lichess_username.lower()) for
+            f'<@{p.white.lichess_username.lower()}> vs <@{p.black.lichess_username.lower()}>' for
         p in
             unscheduled_pairings)
         message = '%s - The following games are unscheduled: %s' % (round_, ', '.join(pairing_strs))
@@ -177,7 +177,7 @@ def notify_mods_no_result(round_, **kwargs):
         message = '%s - All games have results.' % round_
     else:
         pairing_strs = (
-            '@%s vs @%s' % (p.white.lichess_username.lower(), p.black.lichess_username.lower()) for
+            f'<@{p.white.lichess_username.lower()}> vs <@{p.black.lichess_username.lower()}>' for
         p in
             no_result_pairings)
         message = '%s - The following games are missing results: %s' % (
