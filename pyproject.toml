@@ -6,9 +6,9 @@ authors = ["Lakin Wecker <lakin@structuredabstraction.com>"]
 license = "MIT"
 
 [tool.poetry.dependencies]
-python = "^3.9"
-django = "==4.2.*"
-django-reversion = "==5.0.*"
+python = "^3.11"
+django = "==5.1.*"
+django-reversion = "==5.1.*"
 fabric3 = "==1.14.post1"
 psycopg2-binary = "==2.9.9"
 django-debug-toolbar = "==4.2.0"
