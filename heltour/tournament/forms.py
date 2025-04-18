@@ -368,7 +368,7 @@ class RoundTransitionForm(forms.Form):
 
 
 class NominateForm(forms.Form):
-    game_link = forms.URLField(required=False)
+    game_link = forms.URLField(required=False, assume_scheme='https')
 
     def __init__(self, season, player, current_nominations, max_nominations, season_pairings, *args,
                  **kwargs):
