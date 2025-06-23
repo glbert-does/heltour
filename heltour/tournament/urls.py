@@ -205,5 +205,8 @@ urlpatterns = [
     ),
 ]
 
+handler404 = views.Custom404View.as_view()
+handler500 = views.Custom500View.as_view()
+
 if settings.DEBUG:
     urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)

@@ -105,9 +105,9 @@ class BaseView(View):
     def read_context(self):
         self.extra_context = {}
 
-    def render(self, template, context):
+    def render(self, template, context, status=200):
         context.update(self.extra_context)
-        return render(self.request, template, context)
+        return render(self.request, template, context, status=status)
 
     def preprocess(self):
         if not hasattr(self, '_preprocess'):
@@ -2418,6 +2418,26 @@ def _tv_json(league, board=None, team=None):
             'watch': lichessapi.watch_games(game_ids)}
 
 
+class Custom404View(BaseView):
+    def view(self, request, exception):
+        leagues = League.objects.filter(is_active=True).order_by('display_order')
+        print("leagues:")
+        print(leagues)
+        context = {
+            'leagues': leagues,
+        }
+        return self.render(template="custom404.html", context=context, status=404)
+
+
+class Custom500View(BaseView):
+    def view(self, request, exception):
+        leagues = League.objects.filter(is_active=True).order_by('display_order')
+        print("leagues:")
+        print(leagues)
+        context = {
+            'leagues': leagues,
+        }
+        return self.render(template="custom500.html", context=context, status=500)
 # -------------------------------------------------------------------------------
 # Helper functions
 
