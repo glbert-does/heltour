@@ -16,12 +16,12 @@ PASSWORD_HASHERS = [
 ]
 
 # using sqlite3 in memory speeds up tests
-#DATABASES = {
-#    'default': {
-#        'ENGINE': 'django.db.backends.sqlite3',
-#        'NAME': ':memory:',
-#    }
-#}
+DATABASES = {
+    'default': {
+        'ENGINE': 'django.db.backends.sqlite3',
+        'NAME': ':memory:',
+    }
+}
 
 # we do not need debug toolbar for testing
 INSTALLED_APPS = [
