@@ -788,6 +788,10 @@ class RegisterView(LoginRequiredMixin, LeagueView):
                     return redirect(leagueurl('registration_success', league_tag=self.league.tag,
                                               season_tag=self.season.tag))
             else:
+                # if the profile meta is more than three weeks old, force an update
+                if player.profile_update_after() < (timezone.now() - timedelta(days=21)):
+                    user_meta = lichessapi.get_user_meta(player.lichess_username, priority=100)
+                    player.update_profile(user_meta)
                 rules_doc = LeagueDocument.objects.filter(league=self.league, type='rules').first()
                 if rules_doc is not None:
                     doc_url = reverse('by_league:document', args=[self.league.tag, rules_doc.tag])
