@@ -12,7 +12,9 @@
                     <p>Have any questions about the league or need help getting on Slack? Use this form.</p>
                     {% if slack_linked %}
                         <p>
-                            <span style="color: #c00">You are already on Slack. If at all possible, please ask your question there.</span>
+                            <span class="bg-danger" style="color: #700000; padding: 10px">
+                                🚫 ⚠️ You are already on Slack! If at all possible, please ask your question there. ⚠️ 🚫
+                            </span>
                         </p>
                     {% else %}
                         <p>If you are already on Slack, please ask your question there instead.</p>
