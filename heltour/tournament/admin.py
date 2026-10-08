@@ -100,6 +100,7 @@ from heltour.tournament.models import (
     logger,
     normalize_gamelink,
 )
+from heltour.tournament.queries import get_league_by_pk
 from heltour.tournament.team_rating_utils import team_rating_range, team_rating_variance
 from heltour.tournament.workflows import (
     ApproveRegistrationWorkflow,
@@ -145,7 +146,7 @@ def comment_saved(instance, created, **kwargs):
     league_id = model_admin.get_league_id(instance.content_object)
     if league_id is None:
         return
-    league = League.objects.get(pk=league_id)
+    league = get_league_by_pk(pk=league_id)
     signals.league_comment.send(sender=comment_saved, league=league, comment=instance)
 
 
@@ -180,7 +181,7 @@ class _BaseAdmin(VersionAdmin):
         authorized_leagues = self.authorized_leagues(user)
         if self.league_competitor_type is not None \
             and all(
-            (League.objects.get(pk=pk).competitor_type != self.league_competitor_type for pk in
+            (get_league_by_pk(pk=pk).competitor_type != self.league_competitor_type for pk in
              authorized_leagues)):
             return False
         if obj is None:

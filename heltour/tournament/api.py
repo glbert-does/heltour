@@ -15,7 +15,6 @@ from heltour.tournament.models import (
     Alternate,
     AlternateAssignment,
     ApiKey,
-    League,
     LeagueDocument,
     LeagueModerator,
     LoginToken,
@@ -28,6 +27,10 @@ from heltour.tournament.models import (
     TeamMember,
     TeamPlayerPairing,
     get_gameid_from_gamelink,
+)
+from heltour.tournament.queries import (
+    get_default_league,
+    get_league_by_tag,
 )
 
 # API methods expect an HTTP header in the form:
@@ -80,7 +83,7 @@ def find_pairing(request):
         for r in rounds:
             pairings += list(_get_pairings(r, player, black, white, scheduled))
 
-    league = League.objects.filter(tag=league_tag).first()
+    league = get_league_by_tag(tag=league_tag)
     return JsonResponse({"pairings": [_export_pairing(p, league) for p in pairings]})
 
 
@@ -559,7 +562,7 @@ def link_slack(request):
         username_hint=display_name,
         expires=timezone.now() + timedelta(days=30),
     )
-    league = League.objects.filter(is_default=True).first()
+    league = get_default_league()
     sp = (
         SeasonPlayer.objects.filter(player__lichess_username__iexact=display_name)
         .order_by("-season__start_date")

@@ -71,6 +71,13 @@ from heltour.tournament.models import (
     TeamScore,
     logger,
 )
+from heltour.tournament.queries import (
+    active_leagues,
+    active_leagues_other,
+    get_active_leagues_and,
+    get_default_league,
+    get_league_by_tag,
+)
 from heltour.tournament.templatetags.tournament_extras import leagueurl
 
 # Helpers for view caching definitions
@@ -150,8 +157,7 @@ class LeagueView(BaseView):
             'registration_season': registration_season,
             'nav_tree': _get_nav_tree(self.league.tag,
                                       self.season.tag if self.season is not None else None),
-            'other_leagues': League.objects.filter(is_active=True).order_by(
-                'display_order').exclude(pk=self.league.pk)
+            'other_leagues': active_leagues_other(than_pk=self.league.pk),
         })
         context.update(self.extra_context)
         return render(self.request, template, context)
@@ -249,7 +255,7 @@ class ICalMixin:
 
 class HomeView(BaseView):
     def view(self):
-        leagues = League.objects.filter(is_active=True).order_by('display_order')
+        leagues = active_leagues()
 
         context = {
             'leagues': leagues,
@@ -265,8 +271,7 @@ class LeagueHomeView(LeagueView):
             return self.lone_view()
 
     def team_view(self):
-        other_leagues = League.objects.filter(is_active=True).exclude(pk=self.league.pk).order_by(
-            'display_order')
+        other_leagues = active_leagues_other(than_pk=self.league.pk)
 
         rules_doc = LeagueDocument.objects.filter(league=self.league, type='rules').first()
         rules_doc_tag = rules_doc.tag if rules_doc is not None else None
@@ -300,8 +305,7 @@ class LeagueHomeView(LeagueView):
         return self.render('tournament/team_league_home.html', context)
 
     def lone_view(self):
-        other_leagues = League.objects.filter(is_active=True).exclude(pk=self.league.pk).order_by(
-            'display_order')
+        other_leagues = active_leagues_other(than_pk=self.league.pk)
 
         rules_doc = LeagueDocument.objects.filter(league=self.league, type='rules').first()
         rules_doc_tag = rules_doc.tag if rules_doc is not None else None
@@ -1536,9 +1540,7 @@ class DocumentView(LeagueView):
 
 class ContactView(LoginRequiredMixin, LeagueView):
     def view(self, post=False):
-        leagues = [self.league] + list(
-            League.objects.filter(is_active=True).order_by('display_order').exclude(
-                pk=self.league.pk))
+        leagues = [self.league] + list(active_leagues_other(than_pk=self.league.pk))
 
         player = Player.get_or_create(self.request.user.username)
         slack_linked = bool(player.slack_user_id)
@@ -1550,7 +1552,7 @@ class ContactView(LoginRequiredMixin, LeagueView):
                         'http://' in form.cleaned_data['message']
                         or 'https://' in form.cleaned_data['message']
                     )
-                league = League.objects.get(tag=form.cleaned_data['league'])
+                league = get_league_by_tag(tag=form.cleaned_data['league'])
                 for mod in league.leaguemoderator_set.all():
                     if mod.send_contact_emails and mod.player.email and not form_contains_links:
                         sender_email = form.cleaned_data['your_email_address']
@@ -1611,8 +1613,7 @@ class PlayerProfileView(LeagueView):
                     return team_member.team
             return None
 
-        leagues = list((League.objects.filter(is_active=True) | League.objects.filter(
-            pk=self.league.pk)).order_by('display_order'))
+        leagues = list(get_active_leagues_and(this_pk=self.league.pk))
         has_other_seasons = player.seasonplayer_set.exclude(season=self.season).exists()
         other_season_leagues = [(league, [(sp.season, game_count(sp.season), team(sp.season)) for sp in
                                      player.seasonplayer_set \
@@ -2238,8 +2239,7 @@ class LogoutView(LeagueView):
 
 class TvView(LeagueView):
     def view(self):
-        leagues = list((League.objects.filter(is_active=True) | League.objects.filter(
-            pk=self.league.pk)).order_by('display_order'))
+        leagues = list(get_active_leagues_and(this_pk=self.league.pk))
         if self.season.is_active and not self.season.is_completed:
             active_season = self.season
         else:
@@ -2266,7 +2266,7 @@ class TvJsonView(LeagueView):
         if league_tag == 'all':
             league = None
         elif league_tag is not None:
-            league = League.objects.filter(tag=league_tag).first()
+            league = get_league_by_tag(tag=league_tag)
         else:
             league = self.league
         try:
@@ -2418,13 +2418,10 @@ def _get_league(league_tag, allow_none=False):
 
 
 def _get_default_league(allow_none=False):
-    try:
-        return League.objects.filter(is_default=True).order_by('id')[0]
-    except IndexError:
-        league = League.objects.order_by('id').first()
-        if not allow_none and league is None:
-            raise Http404
-        return league
+    league = get_default_league()
+    if not allow_none and league is None:
+        raise Http404
+    return league
 
 
 def _get_season(league_tag, season_tag, allow_none=False):
