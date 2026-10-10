@@ -4,6 +4,16 @@ Rendered by [git-cliff](https://git-cliff.org) from the conventional commits
 behind each tag. `release` rewrites this file in full on every release, so an
 edit made here is lost — edit the commit messages instead.
 
+## v2.4.1 — 2026-10-10
+
+### Fixes
+
+- remove cachebuster qs for base path urls ([c90fb9f](https://github.com/Lichess4545/heltour/commit/c90fb9fb605afe8af89a6598133979a0f44a7c03))
+
+### Tooling
+
+- **deploy**: deploy production 2.4.0 ([88eb187](https://github.com/Lichess4545/heltour/commit/88eb187bbefde077c283261a4f0e44a5a54f485e))
+
 ## v2.4.0 — 2026-10-09
 
 ### Features
