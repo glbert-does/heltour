@@ -30,6 +30,12 @@ def make_chat_client(backend: str) -> ChatClient:
             raise ImproperlyConfigured("SLACK_API_TOKEN is not set")
         return SlackClient(api_token=settings.SLACK_API_TOKEN)
 
+    elif backend == "zulip":
+        from heltour.tournament.zulipapi import ZulipClient
+        if not settings.ZULIP_CONFIG:
+            raise ImproperlyConfigured("ZULIP_CONFIG is not set")
+        return ZulipClient(zulip_env=settings.ZULIP_CONFIG)
+
     raise ChatBackendError(f"Unknown CHAT_BACKEND: {backend!r}")
 
 
