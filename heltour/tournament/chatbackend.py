@@ -32,6 +32,7 @@ def make_chat_client(backend: str) -> ChatClient:
 
     elif backend == "zulip":
         from heltour.tournament.zulipapi import ZulipClient
+
         if not settings.ZULIP_CONFIG:
             raise ImproperlyConfigured("ZULIP_CONFIG is not set")
         return ZulipClient(zulip_env=settings.ZULIP_CONFIG)
