@@ -12,6 +12,9 @@ from heltour.tournament.slackapi import SlackGroup, SlackUser
 
 logger = logging.getLogger(__name__)
 
+# this should be a setting most likely:
+ZULIP_LICHESS_CUSTOM_FIELD_ID = 8707
+
 
 class ZulipClient(ChatClient):
     def __init__(self, zulip_env: str):
@@ -34,26 +37,33 @@ class ZulipClient(ChatClient):
                 )
                 raise ZulipError("Realm settings missing")
 
-#    def _retry_once_on_rate_limit(self, fct: callable, **kwargs):
-#        r = fct(kwargs)
-#        if r["result"] != "success":
-#            if r["code"] == "RATE_LIMIT_HIT":
-#                time.sleep(r[])
-#                r = fct(kwargs)
-#        return r
+    #    def _retry_once_on_rate_limit(self, fct: callable, **kwargs):
+    #        r = fct(kwargs)
+    #        if r["result"] != "success":
+    #            if r["code"] == "RATE_LIMIT_HIT":
+    #                time.sleep(r[])
+    #                r = fct(kwargs)
+    #        return r
 
-    def _message(self, channel: str|int, channel_type: str, text: str, topic: str="(no topic)", tries: int=0) -> None:
+    def _message(
+        self,
+        channel: str | int,
+        channel_type: str,
+        text: str,
+        topic: str = "(no topic)",
+        tries: int = 0,
+    ) -> None:
         if len(topic) > self.max_topic_length:
             logger.warning(
                 f"topic length exceeds max_topic_length {self.max_topic_length}, cutting it."
             )
-            topic = topic[:self.max_topic_length]
+            topic = topic[: self.max_topic_length]
         if len(text) > self.max_message_length:
             logger.warning(
                 "message length exceeds max_message_length "
                 f"{self.max_message_length}, cutting it."
             )
-            text = text[:self.max_message_length]
+            text = text[: self.max_message_length]
         if channel_type == "channel":
             params = {
                 "type": channel_type,
@@ -81,10 +91,12 @@ class ZulipClient(ChatClient):
                     channel=settings.ZULIP_ERROR_LOG,
                     text=(
                         f"Could not send message to {channel}>{topic}.\n"
-                    f"Error Code: {r['code']}\nError msg: {r['msg']}"
-                 ),
+                        f"Error Code: {r['code']}\nError msg: {r['msg']}"
+                    ),
                 )
-            logger.error(f"Could not send message to {channel}>{topic}, error:\n{r['msg']}")
+            logger.error(
+                f"Could not send message to {channel}>{topic}, error:\n{r['msg']}"
+            )
             if r["code"] == "RATE_LIMIT_HIT" and tries < 1:
                 sleep(settings.SLEEP_UNIT * r["retry-after"])
                 self._message(
@@ -95,14 +107,18 @@ class ZulipClient(ChatClient):
                     tries=tries + 1,
                 )
             elif r["code"] == "RATE_LIMIT_HIT":
-                logger.error(f"Hit Rate Limit twice, giving up.\nmsg: {r['msg']}\nretry: {r['retry-after']}")
+                logger.error(
+                    f"Hit Rate Limit twice, giving up.\nmsg: {r['msg']}\nretry: {r['retry-after']}"
+                )
                 raise ZulipRateLimitHit(message=r["msg"], wait=r["retry-after"])
             else:
                 raise ZulipError(r["msg"])
         else:
             logger.info(f"Zulip [{channel} > {topic}]: {text}")
 
-    def _send_message(self, channel: str|int, text: str, topic: str="(no topic)") -> None:
+    def _send_message(
+        self, channel: str | int, text: str, topic: str = "(no topic)"
+    ) -> None:
         if not isinstance(channel, int) and ">" in channel:
             channel_split = channel.partition(">")
             self._message(
@@ -112,11 +128,12 @@ class ZulipClient(ChatClient):
                 topic=channel_split[2],
             )
         else:
-            self._message(channel=channel, channel_type="channel", text=text, topic=topic)
+            self._message(
+                channel=channel, channel_type="channel", text=text, topic=topic
+            )
 
     def _send_direct_message(self, users: list[int], text: str) -> None:
         self._message(channel=users, channel_type="direct", text=text, topic="")
-
 
     def _send_forward_message(self, channel: str, text: str) -> None:
         self._message(
@@ -135,7 +152,6 @@ class ZulipClient(ChatClient):
                 raise ZulipError(r["msg"])
         return r["stream_id"]
 
-
     def _invite_to_group(self, channel_name: str, user_ids: list[int]):
         self.create_channel(channel_name=channel_name, user_ids=user_ids)
 
@@ -143,16 +159,16 @@ class ZulipClient(ChatClient):
         self,
         channel_name: str,
         user_ids: list[int],
-        topic: str="",
-        invite_only: bool=True,
-        history_public: bool=False,
-        can_add_subscribers_ids: list[int]=None,
-        can_add_subscribers_groups: list[int]=None,
-        can_remove_subscribers_ids: list[int]=None,
-        can_remove_subscribers_groups: list[int]=None,
-        can_admin_channel_ids: list[int]=None,
-        can_admin_channel_groups: list[int]=None,
-        tries: int=0,
+        topic: str = "",
+        invite_only: bool = True,
+        history_public: bool = False,
+        can_add_subscribers_ids: list[int] = None,
+        can_add_subscribers_groups: list[int] = None,
+        can_remove_subscribers_ids: list[int] = None,
+        can_remove_subscribers_groups: list[int] = None,
+        can_admin_channel_ids: list[int] = None,
+        can_admin_channel_groups: list[int] = None,
+        tries: int = 0,
     ) -> SlackGroup:
         # don't really see how this could bite us, but avoid mutable defaults anyway
         if can_add_subscribers_ids is None:
@@ -173,13 +189,13 @@ class ZulipClient(ChatClient):
                 "channel name length exceeds max_stream_name_length "
                 f"{self._max_stream_name_length}, cutting it."
             )
-            channel_name = channel_name[:self._max_stream_name_length]
+            channel_name = channel_name[: self._max_stream_name_length]
         if len(topic) > self._max_stream_description_length:
             logger.warning(
                 "channel description length exceeds max_stream_description_length "
                 f"{self._max_stream_description_length}, cutting it."
             )
-            topic = topic[:self._max_stream_description_length]
+            topic = topic[: self._max_stream_description_length]
         if topic:
             stream = [
                 {
@@ -253,6 +269,21 @@ class ZulipClient(ChatClient):
         channel_id = self._get_channel_id(channel_name)
         return SlackGroup(channel_id, channel_name)
 
+    def _get_lichess_username_from_profile(self, profile: dict) -> str:
+        try:
+            return profile["profile_data"][str(ZULIP_LICHESS_CUSTOM_FIELD_ID)]["value"]
+        except KeyError:
+            return ""
+
+    def _get_tz_from_profile(self, profile: dict) -> float:
+        tz = profile.get("timezone")
+        if tz:
+            return (
+                pytz.timezone(tz).localize(datetime.now()).utcoffset().total_seconds()
+            )
+        else:
+            return 0.0
+
     def bold(self, text: str) -> str:
         return f"**{text}**"
 
@@ -284,7 +315,7 @@ class ZulipClient(ChatClient):
         return f"{settings.ZULIP_URL}/#narrow/dm/{users}-group"
 
     def inlinecode(self, text: str) -> str:
-       return f"`{text}`"
+        return f"`{text}`"
 
     def italic(self, text: str) -> str:
         return f"*{text}*"
@@ -307,11 +338,11 @@ class ZulipClient(ChatClient):
         self._send_message(channel=channel, text=text, topic=topic)
 
     def send_control_message(self, text: str) -> None:
-        self.channel_message(channel="msg-forward", channel_type="channel", text=text, topic="control")
+        self.channel_message(
+            channel="msg-forward", channel_type="channel", text=text, topic="control"
+        )
 
-    def direct_user_message(
-        self, username: str, text: str, userid: str
-    ) -> None:
+    def direct_user_message(self, username: str, text: str, userid: str) -> None:
         self._send_direct_message(users=[int(userid)], text=text)
 
     def multiple_user_message(
@@ -329,31 +360,32 @@ class ZulipClient(ChatClient):
         topic: str,
         intro_message: str,
     ) -> None:
-
         user_ids_ext = list(map(int, user_ids))
         user_ids_ext.extend([settings.ZULIP_LISTENING_BOT, settings.ZULIP_HELTOUR_BOT])
         channel = self._create_channel(
-                channel_name=channel_name,
-                user_ids=user_ids_ext,
-                topic=topic,
-                invite_only=True,
-                history_public=False,
-                can_add_subscribers_ids=user_ids_ext,
-                can_remove_subscribers_ids=user_ids_ext,
-                can_admin_channel_ids=user_ids_ext,
+            channel_name=channel_name,
+            user_ids=user_ids_ext,
+            topic=topic,
+            invite_only=True,
+            history_public=False,
+            can_add_subscribers_ids=user_ids_ext,
+            can_remove_subscribers_ids=user_ids_ext,
+            can_admin_channel_ids=user_ids_ext,
         )
         with reversion.create_revision():
             reversion.set_comment("Creating zulip channel")
             team.slack_channel = channel.id
             team.save()
-        self.channel_message(channel=int(channel.id), text=intro_message, topic="Welcome!")
+        self.channel_message(
+            channel=int(channel.id), text=intro_message, topic="Welcome!"
+        )
         sleep(settings.SLEEP_UNIT)
 
-    def get_user(self, user_id: int) -> SlackUser:
-        r = self.client.get_user_by_id(user_id)
+    def get_user(self, user_id: str) -> SlackUser:
+        r = self.client.get_user_by_id(int(user_id), include_custom_profile_fields=True)
         if not r["result"] == "success":
             if settings.ZULIP_ERROR_LOGGING:
-                self.send_message(
+                self.channel_message(
                     channel=settings.ZULIP_ERROR_LOG,
                     text=(
                         f"Could not retrieve user {user_id}.\n"
@@ -365,16 +397,8 @@ class ZulipClient(ChatClient):
             else:
                 raise ZulipError(r["msg"])
         m = r["user"]
-        tz = m.get("timezone")
-        if tz:
-            tzseconds = (
-                pytz.timezone(m.get("timezone"))
-                .localize(datetime.now())
-                .utcoffset()
-                .total_seconds()
-            )
-        else:
-            tzseconds = 0.0
+        tzseconds = self._get_tz_from_profile(m)
+        lichess_account = self._get_lichess_username_from_profile(m)
         return SlackUser(
             id=str(m.get("user_id")),
             display_name=m.get("full_name"),
@@ -382,13 +406,14 @@ class ZulipClient(ChatClient):
             tz_offset=tzseconds,
             name_deprecated="",
             real_name="",
+            lichess_username=lichess_account,
         )
 
     def get_user_list(self) -> list[SlackUser]:
-        r = self.client.get_users()
+        r = self.client.get_members({"include_custom_profile_fields": True})
         if not r["result"] == "success":
             if settings.ZULIP_ERROR_LOGGING:
-                self.send_message(
+                self.channel_message(
                     channel=settings.ZULIP_ERROR_LOG,
                     text=(
                         "Could not retrieve user list.\n"
@@ -401,13 +426,8 @@ class ZulipClient(ChatClient):
                 raise ZulipError(r["msg"])
         result = []
         for m in r["members"]:
-            tz = m.get("timezone")
-            if tz:
-                tzseconds = (
-                    pytz.timezone(tz).localize(datetime.now()).utcoffset().total_seconds()
-                )
-            else:
-                tzseconds = 0.0
+            tzseconds = self._get_tz_from_profile(m)
+            lichess_account = self._get_lichess_username_from_profile(m)
             result.append(
                 SlackUser(
                     id=str(m.get("user_id")),
@@ -416,9 +436,31 @@ class ZulipClient(ChatClient):
                     tz_offset=tzseconds,
                     name_deprecated="",
                     real_name="",
+                    lichess_username=lichess_account,
                 )
             )
         return result
+
+    def set_user(self, user_id: str, lichess_username: str) -> None:
+        r = self.client.update_user_by_id(
+            int(user_id),
+            profile_data=[
+                {
+                    "id": ZULIP_LICHESS_CUSTOM_FIELD_ID,
+                    "value": lichess_username,
+                }
+            ],
+        )
+        if not r["result"] == "success":
+            if settings.ZULIP_ERROR_LOGGING:
+                self._send_message(
+                    channel=settings.ZULIP_ERROR_LOG,
+                    text=(
+                        f"Could not update user {user_id}\n"
+                        f"Error Code: {r['code']}\n"
+                        f"Error msg: {r['msg']}\n"
+                    ),
+                )
 
     def invite_user(self, email: str) -> None:
         params = {
@@ -438,7 +480,7 @@ class ZulipClient(ChatClient):
         r = human_client.call_endpoint(url="/invites", method="POST", request=params)
         if r["result"] != "success":
             if settings.ZULIP_ERROR_LOGGING:
-                self.send_message(
+                self.channel_message(
                     channel=settings.ZULIP_ERROR_LOG,
                     text=(
                         (

@@ -2437,23 +2437,14 @@ class SeasonPlayerAdmin(_BaseAdmin):
             if uid:
                 sp.player.slack_user_id = uid
                 sp.player.save()
+                chatbackend.set_user(user_id=uid, lichess_username=sp.player.lichess_username)
                 linked += 1
                 lichesslink = f"{settings.LICHESS_DOMAIN}@/{sp.player.lichess_username}"
                 text = (
                     f"We linked your {chatbackend.chatbackend()} account to the lichess account "
                     f"{chatbackend.link(url=lichesslink, text=sp.player.lichess_username)}. "
-                    "If that is not your lichess account, please contact a "
+                    "If that is not your lichess account, please contact a moderator."
                 )
-                if settings.USE_CHATBACKEND == "Zulip":
-                    text = (
-                        f"{text}@*website moderator*.\nYou can do so by posting "
-                        "`@*website moderator*` to #**general>summon mods**"
-                    )
-                else:
-                    text = (
-                        f"{text} moderator.\n"
-                        "You can do so by posting `@chesster summon mods` in #general"
-                    )
                 chatbackend.direct_user_message(username=uid, text=text, userid=uid)
         self.message_user(request, f"Linked {linked} players.")
 

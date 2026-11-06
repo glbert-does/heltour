@@ -145,6 +145,11 @@ def get_user_list() -> list[namedtuple]:
     except ChatClient.ChatBackendError:
         raise ChatBackendError
 
+def set_user(user_id: str, lichess_username: str) -> None:
+    try:
+        return notifier.set_user(user_id, lichess_username)
+    except ChatClient.ChatBackendError:
+        raise ChatBackendError
 
 def invite_user(email: str) -> None:
     try:

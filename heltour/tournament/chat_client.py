@@ -84,5 +84,8 @@ class ChatClient:
     def get_user_list(self) -> list[namedtuple]:
         raise NotImplementedError
 
+    def set_user(self, user_id: str, lichess_username: str) -> None:
+        raise NotImplementedError
+
     def invite_user(self, email: str) -> None:
         raise NotImplementedError

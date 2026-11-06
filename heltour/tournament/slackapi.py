@@ -14,7 +14,7 @@ logger = logging.getLogger(__name__)
 
 SlackUser = namedtuple(
     "SlackUser",
-    ["id", "name_deprecated", "real_name", "display_name", "email", "tz_offset"],
+    ["id", "name_deprecated", "real_name", "display_name", "email", "tz_offset", "lichess_username"],
 )
 SlackGroup = namedtuple("SlackGroup", ["id", "name"])
 
@@ -246,6 +246,7 @@ class SlackClient(ChatClient):
             m["profile"].get("display_name"),
             m["profile"].get("email", ""),
             m.get("tz_offset"),
+            "",
         )
 
     def get_user_list(self) -> list[namedtuple]:
@@ -262,9 +263,15 @@ class SlackClient(ChatClient):
                 m["profile"].get("display_name"),
                 m["profile"].get("email", ""),
                 m.get("tz_offset"),
+                "",
             )
             for m in json["members"]
         ]
+
+    def set_user(self, user_id: str, lichess_username: str) -> None:
+        # not used on slack
+        pass
+
 
     def invite_user(self, email: str) -> None:
         url = "https://slack.com/api/users.admin.invite"
