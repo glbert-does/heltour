@@ -13,7 +13,7 @@ from heltour.tournament.slackapi import SlackGroup, SlackUser
 logger = logging.getLogger(__name__)
 
 # this should be a setting most likely:
-ZULIP_LICHESS_CUSTOM_FIELD_ID = 8707
+ZULIP_LICHESS_CUSTOM_FIELD_ID = 8707 # and also, id in the actual 45 zulip, this is id in testing zulip
 
 
 class ZulipClient(ChatClient):
@@ -162,12 +162,12 @@ class ZulipClient(ChatClient):
         topic: str = "",
         invite_only: bool = True,
         history_public: bool = False,
-        can_add_subscribers_ids: list[int] = None,
-        can_add_subscribers_groups: list[int] = None,
-        can_remove_subscribers_ids: list[int] = None,
-        can_remove_subscribers_groups: list[int] = None,
-        can_admin_channel_ids: list[int] = None,
-        can_admin_channel_groups: list[int] = None,
+        can_add_subscribers_ids: list[int] | None = None,
+        can_add_subscribers_groups: list[int] | None = None,
+        can_remove_subscribers_ids: list[int] | None = None,
+        can_remove_subscribers_groups: list[int] | None = None,
+        can_admin_channel_ids: list[int] | None = None,
+        can_admin_channel_groups: list[int] | None = None,
         tries: int = 0,
     ) -> SlackGroup:
         # don't really see how this could bite us, but avoid mutable defaults anyway
@@ -258,10 +258,8 @@ class ZulipClient(ChatClient):
                 )
             elif r["code"] == "RATE_LIMIT_HIT":
                 logger.error(
-                    (
-                        "Hit Rate Limit twice, giving up.\n"
-                        f"msg: {r['msg']}\nretry: {r['retry-after']}"
-                    )
+                    "Hit Rate Limit twice, giving up.\n"
+                    f"msg: {r['msg']}\nretry: {r['retry-after']}"
                 )
                 raise ZulipRateLimitHit(message=r["msg"], wait=r["retry-after"])
             else:
@@ -279,7 +277,7 @@ class ZulipClient(ChatClient):
         tz = profile.get("timezone")
         if tz:
             return (
-                pytz.timezone(tz).localize(datetime.now()).utcoffset().total_seconds()
+                pytz.timezone(tz).localize(datetime.now(tz=datetime.UTC)).utcoffset().total_seconds()
             )
         else:
             return 0.0
@@ -383,7 +381,7 @@ class ZulipClient(ChatClient):
 
     def get_user(self, user_id: str) -> SlackUser:
         r = self.client.get_user_by_id(int(user_id), include_custom_profile_fields=True)
-        if not r["result"] == "success":
+        if r["result"] != "success":
             if settings.ZULIP_ERROR_LOGGING:
                 self.channel_message(
                     channel=settings.ZULIP_ERROR_LOG,
@@ -411,7 +409,7 @@ class ZulipClient(ChatClient):
 
     def get_user_list(self) -> list[SlackUser]:
         r = self.client.get_members({"include_custom_profile_fields": True})
-        if not r["result"] == "success":
+        if r["result"] != "success":
             if settings.ZULIP_ERROR_LOGGING:
                 self.channel_message(
                     channel=settings.ZULIP_ERROR_LOG,
@@ -451,16 +449,15 @@ class ZulipClient(ChatClient):
                 }
             ],
         )
-        if not r["result"] == "success":
-            if settings.ZULIP_ERROR_LOGGING:
-                self._send_message(
-                    channel=settings.ZULIP_ERROR_LOG,
-                    text=(
-                        f"Could not update user {user_id}\n"
-                        f"Error Code: {r['code']}\n"
-                        f"Error msg: {r['msg']}\n"
-                    ),
-                )
+        if r["result"] != "success" and settings.ZULIP_ERROR_LOGGING:
+            self._send_message(
+                channel=settings.ZULIP_ERROR_LOG,
+                text=(
+                    f"Could not update user {user_id}\n"
+                    f"Error Code: {r['code']}\n"
+                    f"Error msg: {r['msg']}\n"
+                ),
+            )
 
     def invite_user(self, email: str) -> None:
         params = {
