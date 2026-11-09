@@ -23,7 +23,7 @@ class ChatClient:
     def chatbackend(self) -> str:
         raise NotImplementedError
 
-    def chatbackend_render(self) -> str:
+    def chatbackend_render(self) -> bool:
         raise NotImplementedError
 
     def chatbackend_url(self) -> str:

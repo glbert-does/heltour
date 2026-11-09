@@ -36,7 +36,7 @@ class SlackClient(ChatClient):
             raise ImproperlyConfigured("SLACK_CHANNEL_BUILDER_TOKEN is not set")
         return settings.SLACK_CHANNEL_BUILDER_TOKEN
 
-    def _create_group(self, group_name):
+    def _create_group(self, group_name: str):
         url = "https://slack.com/api/conversations.create"
         r = requests.post(
             url,
@@ -51,7 +51,7 @@ class SlackClient(ChatClient):
         g = json["channel"]
         return SlackGroup(g["id"], g["name"])
 
-    def _invite_to_group(self, group_id, user_ids):
+    def _invite_to_group(self, group_id: str, user_ids: list[str]):
         url = "https://slack.com/api/conversations.invite"
         r = requests.post(
             url,
@@ -62,7 +62,7 @@ class SlackClient(ChatClient):
         if not json["ok"]:
             raise self.ChatBackendError(json["error"])
 
-    def _leave_group(self, group_id):
+    def _leave_group(self, group_id: str):
         url = "https://slack.com/api/conversations.leave"
         r = requests.get(
             url,
@@ -73,7 +73,7 @@ class SlackClient(ChatClient):
         if not json["ok"]:
             raise self.ChatBackendError(json["error"])
 
-    def _set_group_topic(self, group_id, topic):
+    def _set_group_topic(self, group_id: str, topic: str):
         url = "https://slack.com/api/conversations.setTopic"
         r = requests.post(
             url,
@@ -199,7 +199,7 @@ class SlackClient(ChatClient):
             logger.exception("Could not invite %s to channel" % ",".join(user_ids))
             sleep(settings.SLEEP_UNIT)
         try:
-            self._invite_to_group(group.id, settings.SLACK_LISTENING_BOT_ID)
+            self._invite_to_group(group.id, [settings.SLACK_LISTENING_BOT_ID])
             sleep(settings.SLEEP_UNIT)
         except self.ChatBackendError:
             logger.exception(
@@ -230,7 +230,7 @@ class SlackClient(ChatClient):
                 f"Failed to sent intro message to channel {channel_name} ({group.id})"
             )
 
-    def get_user(self, user_id: str) -> namedtuple:
+    def get_user(self, user_id: str) -> SlackUser:
         url = "https://slack.com/api/users.info"
         r = requests.get(
             url, params={"user": user_id, "token": self._get_slack_token()}
@@ -249,7 +249,7 @@ class SlackClient(ChatClient):
             "",
         )
 
-    def get_user_list(self) -> list[namedtuple]:
+    def get_user_list(self) -> list[SlackUser]:
         url = "https://slack.com/api/users.list"
         r = requests.get(url, params={"token": self._get_slack_token()})
         json = r.json()
@@ -271,7 +271,6 @@ class SlackClient(ChatClient):
     def set_user(self, user_id: str, lichess_username: str) -> None:
         # not used on slack
         pass
-
 
     def invite_user(self, email: str) -> None:
         url = "https://slack.com/api/users.admin.invite"
