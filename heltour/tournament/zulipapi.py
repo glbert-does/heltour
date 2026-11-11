@@ -13,7 +13,8 @@ from heltour.tournament.slackapi import SlackGroup, SlackUser
 logger = logging.getLogger(__name__)
 
 # this should be a setting most likely:
-ZULIP_LICHESS_CUSTOM_FIELD_ID = 8707 # and also, id in the actual 45 zulip, this is id in testing zulip
+ZULIP_LICHESS_CUSTOM_FIELD_ID: int = 8707 # and also, id in the actual 45 zulip, this is id in testing zulip
+ZULIP_CAPTAINS_GROUP: int = 1796731 # id of the captains group, should also be a setting probably. this is the id in the testing zulip.
 
 
 class ZulipClient(ChatClient):
@@ -30,12 +31,12 @@ class ZulipClient(ChatClient):
                 self.max_stream_description_length = register[
                     "max_stream_description_length"
                 ]
-            except KeyError:
+            except KeyError as e:
                 logger.error(
                     "ERROR: Realm response does not contain zulip server setting for "
                     "max lengths of topics/message/stream_name/stream_description"
                 )
-                raise ZulipError("Realm settings missing")
+                raise ZulipError("Realm settings missing") from e
 
     #    def _retry_once_on_rate_limit(self, fct: callable, **kwargs):
     #        r = fct(kwargs)
@@ -47,7 +48,7 @@ class ZulipClient(ChatClient):
 
     def _message(
         self,
-        channel: str | int,
+        channel: str | list[int] | int,
         channel_type: str,
         text: str,
         topic: str = "(no topic)",
@@ -55,7 +56,8 @@ class ZulipClient(ChatClient):
     ) -> None:
         if len(topic) > self.max_topic_length:
             logger.warning(
-                f"topic length exceeds max_topic_length {self.max_topic_length}, cutting it."
+                f"topic length exceeds max_topic_length {self.max_topic_length}, "
+                "cutting it."
             )
             topic = topic[: self.max_topic_length]
         if len(text) > self.max_message_length:
@@ -108,7 +110,9 @@ class ZulipClient(ChatClient):
                 )
             elif r["code"] == "RATE_LIMIT_HIT":
                 logger.error(
-                    f"Hit Rate Limit twice, giving up.\nmsg: {r['msg']}\nretry: {r['retry-after']}"
+                    f"Hit Rate Limit twice, giving up.\n"
+                    f"msg: {r['msg']}\n"
+                    f"retry: {r['retry-after']}"
                 )
                 raise ZulipRateLimitHit(message=r["msg"], wait=r["retry-after"])
             else:
@@ -117,9 +121,9 @@ class ZulipClient(ChatClient):
             logger.info(f"Zulip [{channel} > {topic}]: {text}")
 
     def _send_message(
-        self, channel: str | int, text: str, topic: str = "(no topic)"
+        self, channel: str, text: str, topic: str = "(no topic)"
     ) -> None:
-        if not isinstance(channel, int) and ">" in channel:
+        if ">" in channel:
             channel_split = channel.partition(">")
             self._message(
                 channel=channel_split[0],
@@ -150,10 +154,10 @@ class ZulipClient(ChatClient):
                 raise ZulipRateLimitHit(message=r["msg"], wait=r["retry-after"])
             else:
                 raise ZulipError(r["msg"])
-        return r["stream_id"]
+        return int(r["stream_id"])
 
-    def _invite_to_group(self, channel_name: str, user_ids: list[int]):
-        self.create_channel(channel_name=channel_name, user_ids=user_ids)
+    def _invite_to_group(self, channel_name: str, user_ids: list[int]) -> None:
+        self._create_channel(channel_name=channel_name, user_ids=user_ids)
 
     def _create_channel(
         self,
@@ -184,18 +188,18 @@ class ZulipClient(ChatClient):
         if can_admin_channel_groups is None:
             can_admin_channel_groups = []
 
-        if len(channel_name) > self._max_stream_name_length:
+        if len(channel_name) > self.max_stream_name_length:
             logger.warning(
                 "channel name length exceeds max_stream_name_length "
-                f"{self._max_stream_name_length}, cutting it."
+                f"{self.max_stream_name_length}, cutting it."
             )
-            channel_name = channel_name[: self._max_stream_name_length]
-        if len(topic) > self._max_stream_description_length:
+            channel_name = channel_name[: self.max_stream_name_length]
+        if len(topic) > self.max_stream_description_length:
             logger.warning(
                 "channel description length exceeds max_stream_description_length "
-                f"{self._max_stream_description_length}, cutting it."
+                f"{self.max_stream_description_length}, cutting it."
             )
-            topic = topic[: self._max_stream_description_length]
+            topic = topic[: self.max_stream_description_length]
         if topic:
             stream = [
                 {
@@ -233,11 +237,13 @@ class ZulipClient(ChatClient):
         )
         if r["result"] != "success":
             if settings.ZULIP_ERROR_LOGGING:
-                self.send_message(
+                self._send_message(
                     channel=settings.ZULIP_ERROR_LOG,
                     text=(
-                        f"Could not create channel {channel_name} for user ids {user_ids}.\n"
-                        f"Error Code: {r['code']}\nError msg: {r['msg']}"
+                        f"Could not create channel {channel_name} "
+                        f"for user ids {user_ids}.\n"
+                        f"Error Code: {r['code']}\n"
+                        f"Error msg: {r['msg']}"
                     ),
                 )
             if r["code"] == "RATE_LIMIT_HIT" and tries < 1:
@@ -267,7 +273,7 @@ class ZulipClient(ChatClient):
         channel_id = self._get_channel_id(channel_name)
         return SlackGroup(channel_id, channel_name)
 
-    def _get_lichess_username_from_profile(self, profile: dict) -> str:
+    def _get_lichess_username_from_profile(self, profile: dict[str, str]) -> str:
         try:
             return profile["profile_data"][str(ZULIP_LICHESS_CUSTOM_FIELD_ID)]["value"]
         except KeyError:
@@ -336,7 +342,7 @@ class ZulipClient(ChatClient):
         self._send_message(channel=channel, text=text, topic=topic)
 
     def send_control_message(self, text: str) -> None:
-        self.channel_message(
+        self._message(
             channel="msg-forward", channel_type="channel", text=text, topic="control"
         )
 
@@ -367,15 +373,14 @@ class ZulipClient(ChatClient):
             invite_only=True,
             history_public=False,
             can_add_subscribers_ids=user_ids_ext,
-            can_remove_subscribers_ids=user_ids_ext,
-            can_admin_channel_ids=user_ids_ext,
+            can_admin_channel_groups=[ZULIP_CAPTAINS_GROUP],
         )
         with reversion.create_revision():
             reversion.set_comment("Creating zulip channel")
             team.slack_channel = channel.id
             team.save()
         self.channel_message(
-            channel=int(channel.id), text=intro_message, topic="Welcome!"
+            channel=channel.id, text=intro_message, topic="Welcome!"
         )
         sleep(settings.SLEEP_UNIT)
 
@@ -473,17 +478,17 @@ class ZulipClient(ChatClient):
                 config_file=settings.ZULIP_CONFIG_NOBOT, client="ZulipHeltour"
             )
         except ZulipError as e:
-            raise ZulipError(f"ERROR connecting human client for user invitations: {e}")
+            raise ZulipError(
+                f"ERROR connecting human client for user invitations: {e}"
+            ) from e
         r = human_client.call_endpoint(url="/invites", method="POST", request=params)
         if r["result"] != "success":
             if settings.ZULIP_ERROR_LOGGING:
                 self.channel_message(
                     channel=settings.ZULIP_ERROR_LOG,
                     text=(
-                        (
-                            f"Could not invite {email}\nError Code: "
-                            f"{r['code']}\nError msg: {r['msg']}"
-                        ),
+                        f"Could not invite {email}\nError Code: "
+                        f"{r['code']}\nError msg: {r['msg']}"
                     ),
                 )
             if r["code"] == "INVITATION_FAILED":
