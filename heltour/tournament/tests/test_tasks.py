@@ -4,6 +4,7 @@ from unittest.mock import ANY, call, patch
 from django.test import TestCase, override_settings
 from django.utils import timezone
 
+from heltour.tournament.chatbackend import ChatBackendError, SlackGroup
 from heltour.tournament.lichessapi import ApiClientError
 from heltour.tournament.models import (
     Broadcast,
@@ -18,7 +19,7 @@ from heltour.tournament.models import (
     TeamPairing,
     TeamPlayerPairing,
 )
-from heltour.tournament.chatbackend import ChatBackendError, SlackGroup
+from heltour.tournament.slackapi import SlackClient
 from heltour.tournament.tasks import (
     _create_broadcast_grouping,
     _create_or_update_broadcast,
@@ -328,6 +329,10 @@ class TestTeamChannel(TestCase):
         cls.team_ids = Team.objects.all().order_by("pk").values("pk")
 
     @override_settings(USE_CHATBACKEND="slack")
+    @patch(
+        "heltour.tournament.chatbackend.notifier",
+        return_value=SlackClient(api_token="fake_token"),
+    )
     @patch(
         "heltour.tournament.slackapi.SlackClient._create_group",
         side_effect=[
